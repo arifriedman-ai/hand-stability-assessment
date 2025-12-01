@@ -1,8 +1,13 @@
-import streamlit as st
-from core import config
-# from core import mediapipe_utils   # TO BE IMPLEMENTED BY TEAM/AI
+import time
+from collections import defaultdict
+from typing import Dict, List, Tuple
 
-st.set_page_config(page_title="Calibration", page_icon="🎯", layout="wide")
+import numpy as np
+import streamlit as st
+
+from core import config
+from core import mediapipe_utils
+
 
 st.title("Step 1: Calibration")
 
@@ -14,59 +19,130 @@ st.markdown(
     - Sit at a comfortable distance from your webcam.
     - Raise your **dominant hand** so it is fully visible.
     - Extend your **thumb, index, and middle fingers**.
-    - Try to hold your hand as steady as possible inside the on-screen guide.
+    - Try to hold your hand as steady as possible inside the on-screen view.
     """
 )
 
-st.warning("This tool is for educational purposes only and does **not** diagnose any condition.")
+st.warning(
+    "This tool is for educational purposes only and does **not** provide a medical diagnosis."
+)
 
 st.divider()
 
+# -----------------------------------
+# Initialize / reuse MediaPipe context
+# -----------------------------------
+if "mp_context" not in st.session_state:
+    st.session_state["mp_context"] = mediapipe_utils.init_mediapipe_hands()
+mp_context = st.session_state["mp_context"]
+
+if "calibration_complete" not in st.session_state:
+    st.session_state["calibration_complete"] = False
+
+if "baseline_positions" not in st.session_state:
+    st.session_state["baseline_positions"] = {}
+
+
+# -----------------------------------
+# Layout: video on left, controls on right
+# -----------------------------------
 col1, col2 = st.columns([2, 1])
 
 with col1:
     st.subheader("Webcam & Hand Preview")
-    # TODO (AI / TEAM):
-    # - Use Streamlit's camera input or OpenCV video stream.
-    # - Overlay MediaPipe hand landmarks (thumb, index, middle) on the video.
-    # - Provide a simple visual target region (e.g., a box) for the user to align their hand.
-    #
-    # PSEUDOCODE:
-    # frame = capture_frame_from_webcam()
-    # landmarks = detect_hand_landmarks(frame)
-    # draw_visual_guides(frame, landmarks)
-    # st.image(frame) OR st.camera_input(...)
-    st.info("Webcam preview and landmark overlay will appear here.")
+    preview_frame_placeholder = st.empty()
+    status_placeholder = st.empty()
 
 with col2:
     st.subheader("Calibration Control")
-
     st.markdown(
         f"""
         When you are ready and your hand is steady, click the button below.
-        We will record **{config.CALIBRATION_DURATION_SECONDS} seconds** of baseline data.
+        We will record **{config.CALIBRATION_DURATION_SECONDS} seconds** of baseline fingertip data.
         """
     )
+    start_calibration = st.button("▶ Run Calibration")
 
-    if st.button("▶ Run Calibration"):
-        # TODO (AI / TEAM):
-        # - For the next CALIBRATION_DURATION_SECONDS, continuously:
-        #   * Capture hand landmarks (thumb, index, middle).
-        #   * Store their positions (e.g., x, y pixel coords or normalized coords).
-        # - Compute the **average position** for each finger over this window.
-        # - Save these baseline positions into st.session_state["baseline_positions"].
-        #
-        # Example schema for baseline:
-        # st.session_state["baseline_positions"] = {
-        #     "THUMB": (x_thumb_mean, y_thumb_mean),
-        #     "INDEX": (x_index_mean, y_index_mean),
-        #     "MIDDLE": (x_middle_mean, y_middle_mean),
-        # }
-        #
-        # - Display a success message when calibration finishes.
+
+# -----------------------------------
+# Continuous preview before/after calibration
+# -----------------------------------
+# We show a single frame per script run to keep Streamlit responsive.
+fingertips, frame_rgb = mediapipe_utils.capture_frame_and_landmarks(
+    mp_context, draw_landmarks=True
+)
+if frame_rgb is not None:
+    preview_frame_placeholder.image(
+        frame_rgb,
+        caption="Webcam preview (with hand landmarks, if detected)",
+        channels="RGB",
+    )
+else:
+    status_placeholder.info("Waiting for webcam frame... Make sure your camera is enabled.")
+
+
+# -----------------------------------
+# Perform calibration capture when button is clicked
+# -----------------------------------
+if start_calibration:
+    st.session_state["calibration_complete"] = False
+    status_placeholder.info("Calibration in progress... Hold your hand steady.")
+
+    # Use a dict of finger -> list of (x, y) pairs
+    samples: Dict[str, List[Tuple[float, float]]] = defaultdict(list)
+
+    start_time = time.time()
+    duration = config.CALIBRATION_DURATION_SECONDS
+
+    # Capture frames for the specified duration
+    while time.time() - start_time < duration:
+        fingertip_positions, frame_rgb = mediapipe_utils.capture_frame_and_landmarks(
+            mp_context, draw_landmarks=True
+        )
+
+        if frame_rgb is not None:
+            preview_frame_placeholder.image(
+                frame_rgb,
+                caption="Calibration in progress... Keep your hand steady.",
+                channels="RGB",
+            )
+
+        # If landmarks detected, store them
+        if fingertip_positions:
+            for finger_name, (x, y) in fingertip_positions.items():
+                if finger_name in config.FINGERS_TO_TRACK:
+                    samples[finger_name].append((x, y))
+
+        # Small sleep to avoid hammering the CPU (approx 30 FPS)
+        time.sleep(1 / 30.0)
+
+    # Compute mean position per finger
+    baseline_positions: Dict[str, Tuple[float, float]] = {}
+
+    for finger_name in config.FINGERS_TO_TRACK:
+        coords = samples.get(finger_name, [])
+        if len(coords) == 0:
+            continue  # no data for this finger
+
+        xs = [c[0] for c in coords]
+        ys = [c[1] for c in coords]
+        baseline_positions[finger_name] = (float(np.mean(xs)), float(np.mean(ys)))
+
+    if len(baseline_positions) == 0:
+        status_placeholder.error(
+            "Calibration failed: no hand landmarks were detected. "
+            "Please adjust your lighting and hand position, then try again."
+        )
+    else:
+        st.session_state["baseline_positions"] = baseline_positions
         st.session_state["calibration_complete"] = True
-        st.success("Calibration started. (Logic to capture baseline will be implemented here.)")
+        status_placeholder.success("Calibration complete! Baseline positions have been saved.")
 
-if st.session_state.get("calibration_complete"):
-    st.success("Calibration complete! You can move on to the Live Test page.")
-    st.caption("Use the sidebar to go to '2_Live_Test'.")
+        st.caption(
+            "You can now move on to **Step 2: Live Test** using the navigation menu on the left."
+        )
+
+# If calibration was already completed in a prior run, show a friendly reminder
+if st.session_state.get("calibration_complete") and not start_calibration:
+    st.success("Calibration already completed. You may proceed to the Live Test page.")
+    st.caption("If needed, you can recalibrate by pressing the button again.")
