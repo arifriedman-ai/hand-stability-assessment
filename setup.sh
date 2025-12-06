@@ -26,8 +26,8 @@ apt-get install -y libgl1 libsm6 libxext6 libxrender-dev libglvnd0 libglx0 libgl
 
 echo ""
 echo "[3/3] Installing Python dependencies..."
-pip install -q --upgrade pip
-pip install -q -r requirements.txt
+pip install -q --upgrade pip --root-user-action=ignore
+pip install -q --root-user-action=ignore -r requirements.txt
 
 echo ""
 echo "=========================================="
