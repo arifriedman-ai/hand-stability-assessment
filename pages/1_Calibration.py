@@ -30,11 +30,9 @@ st.warning(
 st.divider()
 
 # -----------------------------------
-# Initialize / reuse MediaPipe context
+# Initialize / reuse browser webcam stream (prompts for permission)
 # -----------------------------------
-if "mp_context" not in st.session_state:
-    st.session_state["mp_context"] = mediapipe_utils.init_mediapipe_hands()
-mp_context = st.session_state["mp_context"]
+webrtc_ctx = mediapipe_utils.init_webrtc_stream("calibration-webrtc")
 
 if "calibration_complete" not in st.session_state:
     st.session_state["calibration_complete"] = False
@@ -67,16 +65,15 @@ with col2:
 # -----------------------------------
 # Continuous preview before/after calibration
 # -----------------------------------
-# We show a single frame per script run to keep Streamlit responsive.
-fingertips, frame_rgb = mediapipe_utils.capture_frame_and_landmarks(
-    mp_context, draw_landmarks=True
-)
-if frame_rgb is not None:
+fingertips, frame_rgb = mediapipe_utils.get_latest_frame_and_fingertips(webrtc_ctx)
+if webrtc_ctx and webrtc_ctx.state.playing and frame_rgb is not None:
     preview_frame_placeholder.image(
         frame_rgb,
         caption="Webcam preview (with hand landmarks, if detected)",
         channels="RGB",
     )
+elif not (webrtc_ctx and webrtc_ctx.state.playing):
+    status_placeholder.info("Waiting for camera permission... Click 'Allow' in your browser.")
 else:
     status_placeholder.info("Waiting for webcam frame... Make sure your camera is enabled.")
 
@@ -85,6 +82,10 @@ else:
 # Perform calibration capture when button is clicked
 # -----------------------------------
 if start_calibration:
+    if not (webrtc_ctx and webrtc_ctx.state.playing):
+        status_placeholder.error("Camera stream is not running. Please allow camera access and try again.")
+        st.stop()
+
     st.session_state["calibration_complete"] = False
     status_placeholder.info("Calibration in progress... Hold your hand steady.")
 
@@ -96,9 +97,7 @@ if start_calibration:
 
     # Capture frames for the specified duration
     while time.time() - start_time < duration:
-        fingertip_positions, frame_rgb = mediapipe_utils.capture_frame_and_landmarks(
-            mp_context, draw_landmarks=True
-        )
+        fingertip_positions, frame_rgb = mediapipe_utils.get_latest_frame_and_fingertips(webrtc_ctx)
 
         if frame_rgb is not None:
             preview_frame_placeholder.image(

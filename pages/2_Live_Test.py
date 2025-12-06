@@ -40,11 +40,9 @@ if not baseline_positions:
     st.stop()
 
 # -----------------------------------
-# Initialize / reuse MediaPipe context
+# Initialize / reuse browser webcam stream (prompts for permission)
 # -----------------------------------
-if "mp_context" not in st.session_state:
-    st.session_state["mp_context"] = mediapipe_utils.init_mediapipe_hands()
-mp_context = st.session_state["mp_context"]
+webrtc_ctx = mediapipe_utils.init_webrtc_stream("live-test-webrtc")
 
 # Flag to track whether the test has been run successfully
 if "test_complete" not in st.session_state:
@@ -84,15 +82,15 @@ with col2:
 # Live preview (single frame per rerun)
 # -----------------------------------
 if not st.session_state.get("test_complete"):
-    fingertips, frame_rgb = mediapipe_utils.capture_frame_and_landmarks(
-        mp_context, draw_landmarks=True
-    )
-    if frame_rgb is not None:
+    fingertips, frame_rgb = mediapipe_utils.get_latest_frame_and_fingertips(webrtc_ctx)
+    if webrtc_ctx and webrtc_ctx.state.playing and frame_rgb is not None:
         video_placeholder.image(
             frame_rgb,
             caption="Live preview (landmarks shown if detected)",
             channels="RGB",
         )
+    elif not (webrtc_ctx and webrtc_ctx.state.playing):
+        status_placeholder.info("Waiting for camera permission... Click 'Allow' in your browser.")
     else:
         status_placeholder.info("Waiting for webcam frame... Ensure your camera is enabled.")
 
@@ -101,6 +99,10 @@ if not st.session_state.get("test_complete"):
 # Perform the timed test on button click
 # -----------------------------------
 if start_test:
+    if not (webrtc_ctx and webrtc_ctx.state.playing):
+        status_placeholder.error("Camera stream is not running. Please allow camera access and try again.")
+        st.stop()
+
     st.session_state["test_complete"] = False
     status_placeholder.info("Test in progress... Hold your hand steady.")
     progress_bar = progress_placeholder.progress(0)
@@ -119,9 +121,7 @@ if start_test:
             break
 
         # Capture current frame and fingertip positions
-        fingertip_positions, frame_rgb = mediapipe_utils.capture_frame_and_landmarks(
-            mp_context, draw_landmarks=True
-        )
+        fingertip_positions, frame_rgb = mediapipe_utils.get_latest_frame_and_fingertips(webrtc_ctx)
 
         if frame_rgb is not None:
             video_placeholder.image(
