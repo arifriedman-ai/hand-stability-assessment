@@ -42,12 +42,39 @@ Metrics are computed as:
 
 ### Installation / Run Instructions
 
-Open a terminal and run:
+#### Quick Setup (Recommended)
+This project requires both system libraries and Python packages. Run the automated setup script:
 
 ```bash
-pip install -r requirements.txt
-python -m streamlit run app.py
+bash setup.sh
 ```
+
+This will:
+1. Update system package lists
+2. Install graphics & media system libraries (requires `sudo`)
+3. Install all Python dependencies from `requirements.txt`
+
+#### Manual Setup (if preferred)
+If you prefer manual setup:
+
+```bash
+# Install system dependencies (one-time)
+sudo apt-get update
+sudo apt-get install -y $(cat requirements-system.txt | grep -v '^#' | tr '\n' ' ')
+
+# Install Python dependencies
+pip install -r requirements.txt
+```
+
+#### Run the Application
+```bash
+streamlit run app.py
+```
+
+#### System Requirements
+- **Python**: 3.8+
+- **System Libraries**: OpenGL, X11, graphics rendering libraries (see `requirements-system.txt`)
+- **Webcam/Camera**: Required for live testing functionality
 
 Then open the URL printed in the terminal in your browser.
 
