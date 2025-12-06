@@ -1,0 +1,40 @@
+# System dependencies required for hand-stability-assessment
+# These are OS-level packages needed for graphics/media processing libraries
+# Install with: sudo apt-get install -y $(cat requirements-system.txt | grep -v '^#' | tr '\n' ' ')
+
+# OpenGL and graphics rendering
+libgl1
+libglvnd0
+libglx0
+libglx-mesa0
+libgl1-mesa-dri
+
+# X11 and display libraries (needed by some media libraries)
+libxext6
+libxrender-dev
+libx11-xcb1
+libxcb-dri3-0
+libxcb-glx0
+libxcb-present0
+libxcb-randr0
+libxcb-sync1
+libxcb-xfixes0
+libxxf86vm1
+
+# Mesa graphics libraries
+mesa-libgallium
+mesa-vulkan-drivers
+libgbm1
+
+# Additional display/session management
+libsm6
+libice6
+
+# Vulkan support (optional, for advanced graphics)
+libvulkan1
+
+# Audio/video codec support (optional, for streamlit-webrtc)
+# Uncomment if needed:
+# libavcodec58
+# libavformat58
+# libswscale5
