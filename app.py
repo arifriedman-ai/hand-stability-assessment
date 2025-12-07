@@ -41,6 +41,16 @@ st.subheader("Get Started")
 
 start = st.button("▶ Begin Assessment (Go to Calibration Page)", type="primary")
 
+if start:
+    try:
+        # Leverage Streamlit's built-in multipage navigation to jump to Calibration.
+        st.switch_page("pages/1_Calibration.py")
+    except AttributeError:
+        # Older Streamlit versions lack switch_page; fall back to an info message.
+        st.warning(
+            "Navigation helper unavailable. Please click '1_Calibration' in the sidebar to continue."
+        )
+
 st.info(
     "Use the navigation menu on the left to go to **Calibration** and start the test."
 )

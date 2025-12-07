@@ -140,6 +140,12 @@ if start_calibration:
         st.caption(
             "You can now move on to **Step 2: Live Test** using the navigation menu on the left."
         )
+        # Automatically navigate to the Live Test page when calibration finishes
+        try:
+            st.switch_page("pages/2_Live_Test.py")
+        except AttributeError:
+            # Older Streamlit versions don't provide `switch_page`; show a friendly hint instead
+            st.info("Calibration complete. Please open '2_Live_Test' from the sidebar to continue.")
 
 # If calibration was already completed in a prior run, show a friendly reminder
 if st.session_state.get("calibration_complete") and not start_calibration:
