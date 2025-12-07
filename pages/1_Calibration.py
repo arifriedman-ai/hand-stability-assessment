@@ -45,6 +45,9 @@ with col_video:
     # Initialize / reuse browser webcam stream (prompts for permission)
     webrtc_ctx = mediapipe_utils.init_webrtc_stream("calibration-webrtc")
 
+    # Top-aligned progress and timer placeholders (above the section title)
+    progress_bar_top = st.empty()
+    timer_top = st.empty()
     st.subheader("Webcam & Hand Preview")
     preview_frame_placeholder = st.empty()
     status_placeholder = st.empty()
@@ -103,8 +106,20 @@ if start_calibration:
     duration = config.CALIBRATION_DURATION_SECONDS
 
     # Capture frames for the specified duration
-    while time.time() - start_time < duration:
+    while True:
+        elapsed = time.time() - start_time
+        if elapsed >= duration:
+            break
+
         fingertip_positions, frame_rgb = mediapipe_utils.get_latest_frame_and_fingertips(webrtc_ctx)
+
+        # Update top progress bar and timer
+        progress = min(1.0, elapsed / duration)
+        try:
+            progress_bar_top.progress(int(progress * 100))
+            timer_top.markdown(f"**Calibration:** {int(duration - elapsed)}s remaining")
+        except Exception:
+            pass
 
         if frame_rgb is not None:
             preview_frame_placeholder.image(
@@ -121,6 +136,13 @@ if start_calibration:
 
         # Small sleep to avoid hammering the CPU (approx 30 FPS)
         time.sleep(1 / 30.0)
+
+    # Clear top progress/timer placeholders after capture
+    try:
+        progress_bar_top.empty()
+        timer_top.empty()
+    except Exception:
+        pass
 
     # Compute mean position per finger
     baseline_positions: Dict[str, Tuple[float, float]] = {}
