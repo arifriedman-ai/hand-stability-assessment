@@ -67,6 +67,21 @@ avg_drift = breakdown["avg_drift"]
 avg_fatigue = breakdown["avg_fatigue"]
 
 # -----------------------------------
+# Quick action: allow user to retake the test
+# -----------------------------------
+with st.container():
+    if st.button("▶ Test Again"):
+        # Clear calibration/test state so the user can re-run cleanly
+        for key in ["calibration_complete", "baseline_positions", "test_complete", "raw_time_series"]:
+            if key in st.session_state:
+                del st.session_state[key]
+
+        try:
+            st.switch_page("pages/1_Calibration.py")
+        except AttributeError:
+            st.info("Session reset. Please open '1_Calibration' from the sidebar to retake the test.")
+
+# -----------------------------------
 # Summary metrics (cards at the top)
 # -----------------------------------
 st.subheader("Summary Metrics")
