@@ -154,6 +154,12 @@ if start_test:
     st.caption(
         "You can now proceed to **Step 3: Results & Interpretation** using the navigation menu."
     )
+    # Automatically navigate to the Results page when the live test finishes
+    try:
+        st.switch_page("pages/3_Results.py")
+    except AttributeError:
+        # Older Streamlit versions don't provide `switch_page`; show a friendly hint instead
+        st.info("Live test complete. Please open '3_Results' from the sidebar to continue.")
 
 # If the test was already completed earlier and user just visited the page
 if st.session_state.get("test_complete") and not start_test:
