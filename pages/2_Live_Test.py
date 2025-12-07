@@ -60,10 +60,12 @@ with col_video:
     # Initialize / reuse browser webcam stream (prompts for permission)
     webrtc_ctx = mediapipe_utils.init_webrtc_stream("live-test-webrtc")
 
+    # Top-aligned progress and timer placeholders (above the section title)
+    progress_bar_top = st.empty()
+    timer_top = st.empty()
     st.subheader("Webcam & Tracking View")
     video_placeholder = st.empty()
     status_placeholder = st.empty()
-    progress_placeholder = st.empty()
 
 with col_controls:
     st.subheader("Test Control")
@@ -114,7 +116,6 @@ if start_test:
 
     st.session_state["test_complete"] = False
     status_placeholder.info("Test in progress... Hold your hand steady.")
-    progress_bar = progress_placeholder.progress(0)
 
     # Reset raw_time_series dict
     raw_time_series: Dict[str, List[Tuple[float, float, float]]] = {
@@ -124,10 +125,19 @@ if start_test:
     start_time = time.time()
     duration = config.TEST_DURATION_SECONDS
 
+    # Capture loop with top progress/timer updates
     while True:
         elapsed = time.time() - start_time
         if elapsed >= duration:
             break
+
+        # Update top progress bar and timer
+        progress = min(1.0, elapsed / duration)
+        try:
+            progress_bar_top.progress(int(progress * 100))
+            timer_top.markdown(f"**Test:** {int(duration - elapsed)}s remaining")
+        except Exception:
+            pass
 
         # Capture current frame and fingertip positions
         fingertip_positions, frame_rgb = mediapipe_utils.get_latest_frame_and_fingertips(webrtc_ctx)
@@ -146,19 +156,26 @@ if start_test:
                     # Store a tuple (t, x, y) with time relative to test start
                     raw_time_series[finger_name].append((float(elapsed), float(x_norm), float(y_norm)))
 
-        # Update progress bar (0–100)
-        progress = min(1.0, elapsed / duration)
-        progress_bar.progress(int(progress * 100))
-
         # Slight delay to approximate ~30 FPS and avoid CPU overload
         time.sleep(1 / 30.0)
+
+    # Clear top progress/timer placeholders after capture
+    try:
+        progress_bar_top.empty()
+        timer_top.empty()
+    except Exception:
+        pass
 
     # Save collected data into session_state
     st.session_state["raw_time_series"] = raw_time_series
     st.session_state["test_complete"] = True
 
     status_placeholder.success("Live test complete! Data has been recorded.")
-    progress_placeholder.empty()  # Clear progress bar
+    # Clear any remaining progress placeholder at top
+    try:
+        progress_bar_top.empty()
+    except Exception:
+        pass
 
     st.caption(
         "You can now proceed to **Step 3: Results & Interpretation** using the navigation menu."
