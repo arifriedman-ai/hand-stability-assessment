@@ -182,6 +182,20 @@ if start_test:
     )
     # Automatically navigate to the Results page when the live test finishes
     try:
+        # Stop the WebRTC stream cleanly before navigating to results to avoid shutdown races
+        try:
+            if webrtc_ctx is not None and hasattr(webrtc_ctx, "stop"):
+                webrtc_ctx.stop()
+        except Exception:
+            pass
+
+        try:
+            import time
+
+            time.sleep(0.5)
+        except Exception:
+            pass
+
         st.switch_page("pages/3_Results.py")
     except AttributeError:
         # Older Streamlit versions don't provide `switch_page`; show a friendly hint instead

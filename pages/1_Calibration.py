@@ -171,6 +171,22 @@ if start_calibration:
         )
         # Automatically navigate to the Live Test page when calibration finishes
         try:
+            # Attempt to stop the WebRTC stream cleanly before navigating away.
+            try:
+                if webrtc_ctx is not None and hasattr(webrtc_ctx, "stop"):
+                    webrtc_ctx.stop()
+            except Exception:
+                # Best-effort stop: ignore errors to avoid crashing the app
+                pass
+
+            # small delay allows the webrtc shutdown to finish and avoids race conditions
+            try:
+                import time
+
+                time.sleep(0.5)
+            except Exception:
+                pass
+
             st.switch_page("pages/2_Live_Test.py")
         except AttributeError:
             # Older Streamlit versions don't provide `switch_page`; show a friendly hint instead
