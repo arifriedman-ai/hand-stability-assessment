@@ -6,6 +6,8 @@ from core import signal_processing
 from core import scoring
 from core import plotting_utils
 
+st.session_state["active_page"] = "results"
+
 
 st.title("Step 3: Results & Interpretation")
 

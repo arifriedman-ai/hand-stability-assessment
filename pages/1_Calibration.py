@@ -1,4 +1,5 @@
 import time
+import uuid
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
@@ -35,6 +36,15 @@ if "calibration_complete" not in st.session_state:
 if "baseline_positions" not in st.session_state:
     st.session_state["baseline_positions"] = {}
 
+CURRENT_PAGE_ID = "calibration"
+previous_page = st.session_state.get("active_page")
+if previous_page != CURRENT_PAGE_ID:
+    st.session_state["calibration_webrtc_key"] = f"calibration-webrtc-{uuid.uuid4()}"
+st.session_state["active_page"] = CURRENT_PAGE_ID
+if "calibration_webrtc_key" not in st.session_state:
+    st.session_state["calibration_webrtc_key"] = f"calibration-webrtc-{uuid.uuid4()}"
+webrtc_stream_key = st.session_state["calibration_webrtc_key"]
+
 
 # -----------------------------------
 # Layout: place the WebRTC streamer and the run button side-by-side
@@ -43,7 +53,7 @@ col_video, col_controls = st.columns([3, 1])
 
 with col_video:
     # Initialize / reuse browser webcam stream (prompts for permission)
-    webrtc_ctx = mediapipe_utils.init_webrtc_stream("calibration-webrtc")
+    webrtc_ctx = mediapipe_utils.init_webrtc_stream(webrtc_stream_key)
 
     # Top-aligned progress and timer placeholders (above the section title)
     progress_bar_top = st.empty()
@@ -61,6 +71,13 @@ with col_controls:
         """
     )
     start_calibration = st.button("▶ Run Calibration")
+
+    if st.button("♻ Reconnect Camera"):
+        st.session_state["calibration_webrtc_key"] = f"calibration-webrtc-{uuid.uuid4()}"
+        if hasattr(st, "rerun"):
+            st.rerun()
+        else:
+            st.experimental_rerun()
 
     st.divider()
     st.subheader("Notes & Tips")

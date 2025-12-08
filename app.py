@@ -8,6 +8,8 @@ st.set_page_config(
     layout="centered",
 )
 
+st.session_state["active_page"] = "home"
+
 # -------- HEADER / TITLE --------
 st.title("Hand Stability & Tremor Assessment Tool")
 st.markdown(

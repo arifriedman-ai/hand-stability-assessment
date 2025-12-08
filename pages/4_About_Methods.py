@@ -1,5 +1,7 @@
 import streamlit as st
 
+st.session_state["active_page"] = "about"
+
 st.title("About This Project & Methods")
 
 st.markdown(
