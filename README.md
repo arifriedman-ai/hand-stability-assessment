@@ -61,14 +61,12 @@ Then open the URL printed in the terminal in your browser.
 - Ensure camera permissions are enabled in your browser when prompted.
 
 **Running a Test:**
-1. **Start Camera**: Click the "Start Camera" button to initialize the video feed.
-2. **Choose Test Type**: Immediately after starting the camera, click either:
-   - **"Live Calibration"** button (for the 3-second baseline recording), or
-   - **"Live Test"** button (for the 30-second stability assessment)
+1. **Start Camera**: Click the "Start" button in the light green box to initialize the video feed.
+2. **Run the Test**: Click **"Run Calibration"** (Calibration tab) or **"Start Live Test"** (Live Test tab). Hold your hand clearly visible to the camera for the full duration, and ensure good lighting and appropriate distance for the most accurate results.
 3. **View Results**: Navigate to the Results page to see your tremor, drift, fatigue metrics, and stability score.
 
 **Multiple Test Sessions:**
-- **Between runs**: Click the "Reset Camera" button to clear the previous session.
+- **Between runs**: Click the **"♻ Reconnect Camera"** button before starting the camera and hitting the Run Calibration or Start Live Test buttons again.
 - **Camera issues**: If you see a camera warning message, click Start and Stop a few times, or refresh the page.
 
 **Navigation:**
