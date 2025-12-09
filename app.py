@@ -1,3 +1,9 @@
+"""Streamlit landing page for the hand stability assessment app.
+
+This page introduces the workflow and offers a quick navigation button
+into the calibration step while setting page-wide Streamlit configuration.
+"""
+
 import streamlit as st
 from core import config
 

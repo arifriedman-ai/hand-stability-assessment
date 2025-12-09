@@ -1,9 +1,11 @@
 """
 Browser-based webcam capture for MediaPipe Hands using Streamlit WebRTC.
 
-This module processes frames sent from the browser (with user permission)
-rather than relying on server-side webcams, which are typically unavailable
-in GitHub Codespaces or other remote deployments.
+The functions and classes here keep camera access inside the browser and
+pipe frames to the backend via WebRTC. This avoids relying on server-side
+webcams (often unavailable in cloud environments) while still letting the
+backend run MediaPipe on each frame and feed annotated video back to the
+client.
 """
 
 from __future__ import annotations
@@ -29,7 +31,20 @@ FINGERTIP_INDICES = {"THUMB": 4, "INDEX": 8, "MIDDLE": 12}
 
 
 def _extract_fingertip_coords(landmarks) -> Dict[str, Tuple[float, float]]:
-    """Convert MediaPipe landmarks into normalized fingertip coords."""
+    """
+    Convert MediaPipe hand landmarks into normalized fingertip coordinates.
+
+    Parameters
+    ----------
+    landmarks : Sequence[NormalizedLandmark]
+        The 21-point landmark list returned by MediaPipe for a detected hand.
+
+    Returns
+    -------
+    dict
+        Mapping of finger name -> (x_norm, y_norm) with values clamped to
+        [0, 1] to guard against occasional out-of-frame predictions.
+    """
     fingertip_positions: Dict[str, Tuple[float, float]] = {}
 
     for finger_name in config.FINGERS_TO_TRACK:
@@ -46,9 +61,17 @@ def _extract_fingertip_coords(landmarks) -> Dict[str, Tuple[float, float]]:
 
 
 class MediaPipeHandProcessor(VideoProcessorBase):
-    """WebRTC video processor that runs MediaPipe Hands per frame."""
+    """
+    WebRTC video processor that runs MediaPipe Hands per frame.
+
+    Instances of this class are created by `webrtc_streamer` on the server
+    side. Each `recv` call processes a single video frame, stores the latest
+    landmarks and RGB image, and returns an annotated frame to the browser.
+    Thread locks ensure that asynchronous frame access remains safe.
+    """
 
     def __init__(self) -> None:
+        """Initialize MediaPipe Hands and thread-safe buffers."""
         self._lock = threading.Lock()
         self.hands = mp_hands.Hands(
             static_image_mode=False,
@@ -60,6 +83,12 @@ class MediaPipeHandProcessor(VideoProcessorBase):
         self.latest_fingertips: Optional[Dict[str, Tuple[float, float]]] = None
 
     def recv(self, frame: av.VideoFrame) -> av.VideoFrame:
+        """
+        Process an incoming WebRTC frame, annotate it, and return it.
+
+        The latest fingertip coordinates and RGB frame are cached for other
+        functions (e.g., pages) to pull asynchronously via `get_latest`.
+        """
         # Convert incoming frame to BGR for OpenCV
         frame_bgr = frame.to_ndarray(format="bgr24")
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
@@ -88,7 +117,15 @@ class MediaPipeHandProcessor(VideoProcessorBase):
         return av.VideoFrame.from_ndarray(annotated_bgr, format="bgr24")
 
     def get_latest(self) -> Tuple[Optional[Dict[str, Tuple[float, float]]], Optional[np.ndarray]]:
-        """Thread-safe retrieval of the most recent landmarks and frame."""
+        """
+        Thread-safe retrieval of the most recent fingertip map and RGB frame.
+
+        Returns
+        -------
+        (fingertips, frame)
+            fingertips: dict[finger] -> (x_norm, y_norm) or None if unavailable
+            frame: copy of the latest RGB numpy array or None if no frame yet
+        """
         with self._lock:
             if self.latest_frame_rgb is None:
                 return None, None
@@ -96,7 +133,12 @@ class MediaPipeHandProcessor(VideoProcessorBase):
 
 
 def init_webrtc_stream(key: str):
-    """Start/return a WebRTC streamer that prompts for browser camera access."""
+    """
+    Start or reuse a WebRTC streamer that prompts for browser camera access.
+
+    The returned context holds the `MediaPipeHandProcessor` instance, which
+    pages can query for the latest frame and fingertip landmarks.
+    """
     return webrtc_streamer(
         key=key,
         mode=WebRtcMode.SENDRECV,
@@ -117,7 +159,20 @@ def init_webrtc_stream(key: str):
 
 
 def get_latest_frame_and_fingertips(webrtc_ctx) -> Tuple[Optional[Dict[str, Tuple[float, float]]], Optional[np.ndarray]]:
-    """Fetch the latest processed frame and fingertips from a WebRTC context."""
+    """
+    Fetch the most recent processed frame and fingertip coordinates.
+
+    Parameters
+    ----------
+    webrtc_ctx : streamlit_webrtc.WebRtcStreamerContext
+        Context returned by `init_webrtc_stream`; may be None during startup.
+
+    Returns
+    -------
+    (fingertips, frame)
+        fingertips: dict[finger] -> (x_norm, y_norm) or None if not ready
+        frame: latest RGB numpy array or None when no frame has been processed
+    """
     if webrtc_ctx is None or webrtc_ctx.video_processor is None:
         return None, None
     return webrtc_ctx.video_processor.get_latest()

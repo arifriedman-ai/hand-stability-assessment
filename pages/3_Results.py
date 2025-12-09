@@ -1,3 +1,9 @@
+"""Step 3 page: compute and visualize hand stability metrics.
+
+Transforms captured trajectories into displacement, tremor, drift, fatigue,
+and a combined stability score, then renders figures and summary metrics.
+"""
+
 import streamlit as st
 import numpy as np
 

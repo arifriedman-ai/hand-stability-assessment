@@ -1,3 +1,9 @@
+"""Step 2 page: run the timed live hand stability test.
+
+Uses the browser webcam stream to capture per-frame fingertip coordinates
+for the configured test duration and stores raw trajectories in session state.
+"""
+
 import time
 import uuid
 from collections import defaultdict

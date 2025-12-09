@@ -1,3 +1,9 @@
+"""Step 1 page: collect baseline fingertip positions via MediaPipe WebRTC.
+
+Guides the user through a short calibration recording to compute per-finger
+baseline coordinates stored in Streamlit session state for later steps.
+"""
+
 import time
 import uuid
 from collections import defaultdict

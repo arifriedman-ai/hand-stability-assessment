@@ -1,3 +1,5 @@
+"""About page describing project goals, methods, and limitations."""
+
 import streamlit as st
 
 st.session_state["active_page"] = "about"
